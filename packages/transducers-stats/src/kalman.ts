@@ -1,33 +1,38 @@
-import {
-    iterator1,
-    Transducer,
-} from "@thi.ng/transducers";
-import { map } from '@thi.ng/transducers/xform/map';
+import { Reducer, $$reduce } from "@thi.ng/transducers";
 
-type KalmanStep = [number, number]
+type KalmanStep = [number, number];
 
-/**
- */
-export function kalman(P: number, a: number): Transducer<number, KalmanStep>;
-export function kalman(P: number, a: number, src: Iterable<number>): IterableIterator<KalmanStep>;
-export function kalman(P: number, a: number, src?: Iterable<number>): any {
-    if (src) {
-        return iterator1(kalman(P, a), src);
+function step(x: number, a: number, p: number) {
+    const error = x - a;
+    const errorVariance = p + 1;
+
+    const K = p / errorVariance;
+
+    const aPrime = a + K * error;
+    const pPrime = p * (1 - K) + 1;
+
+    return [aPrime, pPrime] as KalmanStep;
+}
+
+export function kalman(a: number, p: number): Reducer<KalmanStep[], number>;
+export function kalman(
+    a: number,
+    p: number,
+    xs: Iterable<number>
+): Reducer<KalmanStep[], number>;
+export function kalman(...args: any[]): any {
+    const res = $$reduce(kalman, args);
+    if (res !== undefined) {
+        return res;
     }
-
-    const signal = 100
-    const noise = 15
-
-    return map((x: number) => {
-        const error = x - a
-        const errorVar = P + noise
-
-        const gainK = P / errorVar
-
-        const aPrime = a + gainK * error
-        const PPrime = P * (1 - gainK) + signal
-
-        return [aPrime, PPrime, x]
-    });
-
+    const [a, p] = args;
+    return [
+        () => [[a, p]],
+        (acc: any) => acc,
+        (acc: any, x: any) => {
+            const last = acc[acc.length - 1];
+            acc.push(step(x, last[0], last[1]));
+            return acc;
+        },
+    ];
 }
