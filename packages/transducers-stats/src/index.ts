@@ -15,3 +15,4 @@ export * from "./wma";
 export * from "./bounds";
 export * from "./dot";
 export * from "./mse";
+export * from './kalman';
